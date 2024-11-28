@@ -66,19 +66,22 @@ struct ARRAY_LIST {
 };
 
 /// Initialize an array list.
+///
 /// On failure, buf will be NULL.
 ARRAY_LIST_FN struct ARRAY_LIST
 ARRAY_LIST_INIT(size_t initial_capacity);
 
 /// Resize list to provided size.
+/// Invalidates pointers to elements.
+///
 /// On success returns 0.
 /// On failure returns non-zero value.
-/// Invalidates pointers to elements.
 ARRAY_LIST_FN int
 ARRAY_LIST_RESIZE(struct ARRAY_LIST *list, size_t new_capacity);
 
 /// Append item to end of list.
 /// Resizes if needed, invaldating pointers to list's buffer.
+///
 /// On success returns 0.
 /// On failure returns non-zero value.
 ARRAY_LIST_FN int
@@ -86,6 +89,7 @@ ARRAY_LIST_APPEND(struct ARRAY_LIST *list, typeof(ARRAY_LIST_T) item);
 
 /// Append item to end of list N times.
 /// Resizes if needed, invaldating pointers to list's buffer.
+///
 /// On success returns 0.
 /// On failure returns non-zero value.
 ARRAY_LIST_FN int
@@ -93,6 +97,7 @@ ARRAY_LIST_APPEND_N_TIMES(struct ARRAY_LIST *list, typeof(ARRAY_LIST_T) item, si
 
 /// Append each item of a buffer to end of list.
 /// Resizes if needed, invaldating pointers to list's buffer.
+///
 /// On success returns 0.
 /// On failure returns non-zero value.
 ARRAY_LIST_FN int
@@ -183,6 +188,7 @@ ARRAY_LIST_DEINIT(struct ARRAY_LIST *list);
 #ifdef ARRAY_LIST_IMPL
 
 /// Initialize an array list.
+///
 /// On failure, buf will be NULL.
 ARRAY_LIST_FN struct ARRAY_LIST
 ARRAY_LIST_INIT(size_t initial_capacity)
@@ -196,9 +202,10 @@ ARRAY_LIST_INIT(size_t initial_capacity)
 }
 
 /// Resize list to provided size.
+/// Invalidates pointers to elements.
+///
 /// On success returns 0.
 /// On failure returns non-zero value.
-/// Invalidates pointers to elements.
 ARRAY_LIST_FN int
 ARRAY_LIST_RESIZE(struct ARRAY_LIST *list, size_t new_capacity)
 {
@@ -216,6 +223,7 @@ ARRAY_LIST_RESIZE(struct ARRAY_LIST *list, size_t new_capacity)
 
 /// Append item to end of list.
 /// Resizes if needed, invaldating pointers to list's buffer.
+///
 /// On success returns 0.
 /// On failure returns non-zero value.
 ARRAY_LIST_FN int
@@ -238,6 +246,7 @@ ARRAY_LIST_APPEND(struct ARRAY_LIST *list, typeof(ARRAY_LIST_T) item)
 
 /// Append item to end of list N times.
 /// Resizes if needed, invaldating pointers to list's buffer.
+///
 /// On success returns 0.
 /// On failure returns non-zero value.
 ARRAY_LIST_FN int
@@ -258,6 +267,7 @@ ARRAY_LIST_APPEND_N_TIMES(struct ARRAY_LIST *list, typeof(ARRAY_LIST_T) item, si
 
 /// Append each item of a buffer to end of list.
 /// Resizes if needed, invaldating pointers to list's buffer.
+///
 /// On success returns 0.
 /// On failure returns non-zero value.
 ARRAY_LIST_FN int
