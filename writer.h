@@ -1,3 +1,6 @@
+#ifndef WRITER_H
+#define WRITER_H
+
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
@@ -87,36 +90,4 @@ Write_Bytes_N_Times(struct Writer writer, const char *bytes, size_t count, size_
     return 0;
 }
 
-// fn Write_Int(self: Self, comptime T: type, value: T, endian: std.builtin.Endian) anyerror!void {
-//     var bytes: [@divExact(@typeInfo(T).int.bits, 8)]u8 = undefined;
-//     mem.writeInt(std.math.ByteAlignedInt(@TypeOf(value)), &bytes, value, endian);
-//     return self.writeAll(&bytes);
-// }
-//
-// fn Write_Struct(self: Self, value: anytype) anyerror!void {
-//     // Only extern and packed structs have defined in-memory layout.
-//     comptime assert(@typeInfo(@TypeOf(value)).@"struct".layout != .auto);
-//     return self.writeAll(mem.asBytes(&value));
-// }
-//
-// fn Write_Struct_Endian(self: Self, value: anytype, endian: std.builtin.Endian) anyerror!void {
-//     // TODO: make sure this value is not a reference type
-//     if (native_endian == endian) {
-//         return self.Write_Struct(value);
-//     } else {
-//         var copy = value;
-//         mem.byteSwapAllFields(@TypeOf(value), &copy);
-//         return self.Write_Struct(copy);
-//     }
-// }
-//
-// fn Write_File(self: Self, file: std.fs.File) anyerror!void {
-//     // TODO: figure out how to adjust std lib abstractions so that this ends up
-//     // doing sendfile or maybe even copy_file_range under the right conditions.
-//     var buf: [4000]u8 = undefined;
-//     while (true) {
-//         const n = try file.Read_All(&buf);
-//         try self.Write_All(buf[0..n]);
-//         if (n < buf.len) return;
-//     }
-// }
+#endif
