@@ -1,6 +1,3 @@
-#ifndef WRITER_H
-#define WRITER_H
-
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
@@ -49,8 +46,62 @@ Write_All(struct Writer writer, const char *buf, size_t count)
 
 /// TODO: Implement
 int
-Print(struct Writer self, const char *format, ...)
+Print(struct Writer writer, const char *format, ...)
 {
+    int ret;
+    const size_t format_len = strlen(format);
+    size_t i = 0;
+    while (i < format_len) {
+        size_t start_i = i;
+        while (i < format_len) {
+            if (format[i] == '{' || format[i] == '}') {
+                break;
+            }
+            i += 1;
+        }
+        size_t end_i = i;
+        bool unescape_brace = false;
+
+        if (i + 1 < format_len && format[i + 1] == format[i]) {
+            unescape_brace = true;
+            end_i += 1;
+            i += 2;
+        }
+
+        if (start_i != end_i) {
+            ret = Write_All(writer, format + start_i, end_i - start_i);
+            if (ret != 0) {
+                return ret;
+            }
+        }
+
+        if (unescape_brace) {
+            continue;
+        }
+
+        if (i >= format_len) {
+            break;
+        }
+
+        if (format[i] == '}') {
+            // missing opening {
+            return 1;
+        }
+        i += 1;
+
+        size_t fmt_begin = i;
+        while (i < format_len && format[i] != '}') {
+            i += 1;
+        }
+        size_t fmt_end = i;
+
+        if (i >= format_len) {
+            // missing closing }
+            return 2;
+        }
+        i += 1;
+
+    }
     return 0;
 }
 
