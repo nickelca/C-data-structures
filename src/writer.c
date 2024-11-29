@@ -2,15 +2,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
+#include "../include/writer.h"
 
 // clang-format off
 
-struct Writer {
-    void *ctx;
-    ssize_t (*write_fn)(void *ctx, const char *buf, size_t count);
-};
-
-static ssize_t
+static size_t
 STD_Out_Write(void *ctx, const char *buf, size_t count)
 {
     return fwrite(buf, 1, count, ctx);
@@ -25,7 +21,7 @@ Get_STD_Out(void)
     return stdout_w;
 }
 
-ssize_t
+size_t
 Write(struct Writer writer, const char *buf, size_t count)
 {
     return writer.write_fn(writer.ctx, buf, count);
@@ -35,9 +31,9 @@ int
 Write_All(struct Writer writer, const char *buf, size_t count)
 {
     for (size_t i = 0; i < count;) {
-        ssize_t written = Write(writer, buf, count);
-        if (written < 0) {
-            return written;
+        size_t written = Write(writer, buf, count);
+        if (written < count) {
+            return E_Writer_Short_Count;
         }
         i += written;
     }
@@ -84,8 +80,7 @@ Print(struct Writer writer, const char *format, ...)
         }
 
         if (format[i] == '}') {
-            // missing opening {
-            return 1;
+            return E_Writer_Placeholder_Start;
         }
         i += 1;
 
@@ -96,8 +91,7 @@ Print(struct Writer writer, const char *format, ...)
         size_t fmt_end = i;
 
         if (i >= format_len) {
-            // missing closing }
-            return 2;
+            return E_Writer_Placeholder_End;
         }
         i += 1;
 
@@ -120,7 +114,7 @@ Write_Byte_N_Times(struct Writer writer, char byte, size_t n)
 
     while (n > 0) {
         size_t to_write = (n < bytes_len) ? n : bytes_len;
-        int ret = Write(writer, bytes, to_write);
+        int ret = Write_All(writer, bytes, to_write);
         if (!ret) {
             return ret;
         }
@@ -140,5 +134,3 @@ Write_Bytes_N_Times(struct Writer writer, const char *bytes, size_t count, size_
     }
     return 0;
 }
-
-#endif

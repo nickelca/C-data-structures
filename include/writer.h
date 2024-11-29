@@ -8,9 +8,18 @@
 
 // clang-format off
 
+enum E_Writer {
+    /// Full count of bytes was not successfully written
+    E_Writer_Short_Count = 1,
+    /// Format placeholder is missing opening {
+    E_Writer_Placeholder_Start,
+    /// Format placeholder is missing closing }
+    E_Writer_Placeholder_End,
+};
+
 struct Writer {
     void *ctx;
-    ssize_t (*write_fn)(void *ctx, const char *buf, size_t count);
+    size_t (*write_fn)(void *ctx, const char *buf, size_t count);
 };
 
 /// Get writer pointing to stdout
@@ -20,7 +29,7 @@ Get_STD_Out(void);
 /// Write up to count bytes from buf
 ///
 /// TODO: Find proper error values
-ssize_t
+size_t
 Write(struct Writer writer, const char *buf, size_t count);
 
 /// Write count bytes from buf, erroring if full count could not be written
