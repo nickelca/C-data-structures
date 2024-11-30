@@ -46,6 +46,22 @@ Write(struct Writer writer, const char *buf, size_t count);
 int
 Write_All(struct Writer writer, const char *buf, size_t count);
 
+/// Write all bytes of a null terminated string, erroring if full count could
+/// not be written.
+///
+/// On success returns 0.
+/// On failure returns non-zero value.
+int
+Write_All_String(struct Writer writer, const char *str);
+
+/// Write up to n bytes of a null terminated string, erroring if full count
+/// could not be written.
+///
+/// On success returns 0.
+/// On failure returns non-zero value.
+int
+Write_All_String_N(struct Writer writer, const char *str, size_t n);
+
 /// Print a formatted string.
 /// Placeholders follow the format:
 /// {[length modifier][specifier]:[fill][alignment][width].[precision]}.

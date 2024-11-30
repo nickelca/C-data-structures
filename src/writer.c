@@ -42,6 +42,19 @@ Write_All(struct Writer writer, const char *buf, size_t count)
     return 0;
 }
 
+int
+Write_All_String(struct Writer writer, const char *str)
+{
+    return Write_All(writer, str, strlen(str));
+}
+
+int
+Write_All_String_N(struct Writer writer, const char *str, size_t n)
+{
+    const char *len = memchr(str, 0, n);
+    return Write_All(writer, str, len ? len - str : n);
+}
+
 struct Format_Placeholder {
     enum : char {
         format_length_default,
