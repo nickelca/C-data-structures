@@ -2,9 +2,6 @@
 #define WRITER_H
 
 #include <stddef.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/types.h>
 
 // clang-format off
 
@@ -65,6 +62,10 @@ Write_All(struct Writer writer, const char *buf, size_t count);
 /// s    short.
 /// l    long.
 /// ll   long long.
+/// us   unsigned short.
+/// u    unsigned int.
+/// ul   unsigned long.
+/// ull  unsigned long long.
 /// [specifier] can be one of:
 /// d    Print number as decimal (base 10).
 /// x    Print number as hexadecimal (base 16).

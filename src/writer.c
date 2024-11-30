@@ -1,8 +1,10 @@
 #include "../include/writer.h"
+#include <stdarg.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
+#include <wchar.h>
 
 // clang-format off
 
@@ -69,6 +71,31 @@ struct Format_Placeholder {
     int prec;
 };
 
+/// TODO: Support wchar_t?
+static inline int
+Format_String(struct Writer writer, struct Format_Placeholder fmt, va_list args)
+{
+    int ret;
+    if (fmt.length == format_length_default) {
+        const char *str = va_arg(args, char *);
+        size_t len = 0;
+        if (fmt.width < 0) {
+            len = strlen(str);
+        } else {
+            const char *end = memchr(str, 0, fmt.width);
+            len = end ? end - str : fmt.width;
+        }
+
+        ret = Write_All(writer, str, len);
+        if (ret != 0) {
+            return ret;
+        }
+    } else {
+        return E_Writer_Format_Length;
+    }
+    return 0;
+}
+
 /// Do not include { and }
 /// *out is indeterminate upon error
 static int
@@ -79,20 +106,20 @@ Parse_Format_Placeholder(const char *str, size_t len, struct Format_Placeholder 
         .specifier = format_specifier_default,
         .fill = ' ',
         .alignment = format_alignment_left,
-        .width = 0,
-        .prec = 0,
+        .width = -1,
+        .prec = -1,
     };
 
-    char specifier = ' ';
-    const char *sep = str;
-    while (sep < &str[len] && sep[0] != ':') {
-        sep = &sep[1];
-    }
-    if (sep == str) {
+    const char *sep_opt = memchr(str, ':', len);
+    const size_t sep = sep_opt
+        ? (size_t)(sep_opt - str)
+        : len;
+    if (sep == 0) {
         return E_Writer_Format_Specifier;
     }
+    const size_t length_modifier_len = sep - 1;
 
-    switch (sep[len - 1]) {
+    switch (str[length_modifier_len]) {
         case 'd':
             out->specifier = format_specifier_decimal;
             break;
@@ -111,8 +138,24 @@ Parse_Format_Placeholder(const char *str, size_t len, struct Format_Placeholder 
         default: return E_Writer_Format_Specifier;
     }
 
-    for (; str < sep; str = &str[1]) {
-        
+    if (length_modifier_len == 0) {
+        out->length = format_length_default;
+    } else if (strncmp("s", str, length_modifier_len) == 0) {
+        out->length = format_length_short;
+    } else if (strncmp("l", str, length_modifier_len) == 0) {
+        out->length = format_length_short;
+    } else if (strncmp("ll", str, length_modifier_len) == 0) {
+        out->length = format_length_short;
+    } else if (strncmp("us", str, length_modifier_len) == 0) {
+        out->length = format_length_short;
+    } else if (strncmp("u", str, length_modifier_len) == 0) {
+        out->length = format_length_short;
+    } else if (strncmp("ul", str, length_modifier_len) == 0) {
+        out->length = format_length_short;
+    } else if (strncmp("ull", str, length_modifier_len) == 0) {
+        out->length = format_length_short;
+    } else {
+        return E_Writer_Format_Length;
     }
 
     return 0;
@@ -122,8 +165,10 @@ Parse_Format_Placeholder(const char *str, size_t len, struct Format_Placeholder 
 int
 Print(struct Writer writer, const char *format, ...)
 {
-    int ret;
+    int ret = 0;
     const size_t format_len = strlen(format);
+    va_list args;
+    va_start(args, format);
     size_t i = 0;
     while (i < format_len) {
         size_t literal_begin = i;
@@ -144,7 +189,7 @@ Print(struct Writer writer, const char *format, ...)
         if (literal_begin != literal_end) {
             ret = Write_All(writer, format + literal_begin, literal_end - literal_begin);
             if (ret != 0) {
-                return ret;
+                goto ret;
             }
         }
 
@@ -156,7 +201,8 @@ Print(struct Writer writer, const char *format, ...)
         }
 
         if (format[i] == '}') {
-            return E_Writer_Placeholder_Start;
+            ret = E_Writer_Format_Start;
+            goto ret;
         }
         // skip {
         i += 1;
@@ -166,7 +212,8 @@ Print(struct Writer writer, const char *format, ...)
         }
         size_t fmt_end = i;
         if (i >= format_len) {
-            return E_Writer_Placeholder_End;
+            ret = E_Writer_Format_End;
+            goto ret;
         }
         // skip }
         i += 1;
@@ -178,11 +225,20 @@ Print(struct Writer writer, const char *format, ...)
             &placeholder
         );
         if (ret != 0) {
-            return ret;
+            goto ret;
+        }
+
+        switch (placeholder.specifier) {
+            case format_specifier_string:
+                Format_String(writer, placeholder, args);
+                break;
+            default: unreachable();
         }
 
     }
-    return 0;
+ret:
+    va_end(args);
+    return ret;
 }
 
 int
