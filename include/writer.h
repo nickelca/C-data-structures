@@ -9,12 +9,22 @@
 // clang-format off
 
 enum E_Writer {
-    /// Full count of bytes was not successfully written
+    /// Full count of bytes was not successfully written.
     E_Writer_Short_Count = 1,
-    /// Format placeholder is missing opening {
-    E_Writer_Placeholder_Start,
-    /// Format placeholder is missing closing }
-    E_Writer_Placeholder_End,
+    /// Format placeholder is missing opening {.
+    E_Writer_Format_Start,
+    /// Format placeholder is missing closing }.
+    E_Writer_Format_End,
+    /// Format placeholder has an invalid length modifier.
+    E_Writer_Format_Length,
+    /// Format placeholder has an invalid specifier.
+    E_Writer_Format_Specifier,
+    /// Format placeholder has invalid alignment character (not '<', '^', '>').
+    E_Writer_Format_Alignment,
+    /// Format placeholder has invalid width, e.g. not a number.
+    E_Writer_Format_Width,
+    /// Format placeholder has invalid precision, e.g. not a number.
+    E_Writer_Format_Precision,
 };
 
 struct Writer {
@@ -60,6 +70,7 @@ Write_All(struct Writer writer, const char *buf, size_t count);
 /// x    Print number as hexadecimal (base 16).
 /// o    Print number as octal (base 8).
 /// c    Print number as a character.
+/// s    Print null-terminated string
 ///
 /// To print literal { and }, escape them by writing them twice, e.g. {{ or }}.
 ///

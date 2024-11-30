@@ -1,8 +1,8 @@
+#include "../include/writer.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
-#include "../include/writer.h"
 
 // clang-format off
 
@@ -40,6 +40,84 @@ Write_All(struct Writer writer, const char *buf, size_t count)
     return 0;
 }
 
+struct Format_Placeholder {
+    enum : char {
+        format_length_default,
+        format_length_short,
+        format_length_long,
+        format_length_long_long,
+        format_length_ushort,
+        format_length_uint,
+        format_length_ulong,
+        format_length_ulong_long,
+    } length;
+    enum : char {
+        format_specifier_default,
+        format_specifier_decimal,
+        format_specifier_hex,
+        format_specifier_octal,
+        format_specifier_char,
+        format_specifier_string,
+    } specifier;
+    char fill;
+    enum : char {
+        format_alignment_left,
+        format_alignment_middle,
+        format_alignment_right,
+    } alignment;
+    int width;
+    int prec;
+};
+
+/// Do not include { and }
+/// *out is indeterminate upon error
+static int
+Parse_Format_Placeholder(const char *str, size_t len, struct Format_Placeholder *out)
+{
+    *out = (struct Format_Placeholder){
+        .length = format_length_default,
+        .specifier = format_specifier_default,
+        .fill = ' ',
+        .alignment = format_alignment_left,
+        .width = 0,
+        .prec = 0,
+    };
+
+    char specifier = ' ';
+    const char *sep = str;
+    while (sep < &str[len] && sep[0] != ':') {
+        sep = &sep[1];
+    }
+    if (sep == str) {
+        return E_Writer_Format_Specifier;
+    }
+
+    switch (sep[len - 1]) {
+        case 'd':
+            out->specifier = format_specifier_decimal;
+            break;
+        case 'x':
+            out->specifier = format_specifier_hex;
+            break;
+        case 'o':
+            out->specifier = format_specifier_octal;
+            break;
+        case 'c':
+            out->specifier = format_specifier_char;
+            break;
+        case 's':
+            out->specifier = format_specifier_string;
+            break;
+        default: return E_Writer_Format_Specifier;
+    }
+
+    for (; str < sep; str = &str[1]) {
+        
+    }
+
+    return 0;
+}
+
 /// TODO: Implement
 int
 Print(struct Writer writer, const char *format, ...)
@@ -48,24 +126,23 @@ Print(struct Writer writer, const char *format, ...)
     const size_t format_len = strlen(format);
     size_t i = 0;
     while (i < format_len) {
-        size_t start_i = i;
+        size_t literal_begin = i;
         while (i < format_len) {
             if (format[i] == '{' || format[i] == '}') {
                 break;
             }
             i += 1;
         }
-        size_t end_i = i;
+        size_t literal_end = i;
         bool unescape_brace = false;
 
         if (i + 1 < format_len && format[i + 1] == format[i]) {
             unescape_brace = true;
-            end_i += 1;
+            literal_end += 1;
             i += 2;
         }
-
-        if (start_i != end_i) {
-            ret = Write_All(writer, format + start_i, end_i - start_i);
+        if (literal_begin != literal_end) {
+            ret = Write_All(writer, format + literal_begin, literal_end - literal_begin);
             if (ret != 0) {
                 return ret;
             }
@@ -74,7 +151,6 @@ Print(struct Writer writer, const char *format, ...)
         if (unescape_brace) {
             continue;
         }
-
         if (i >= format_len) {
             break;
         }
@@ -82,18 +158,28 @@ Print(struct Writer writer, const char *format, ...)
         if (format[i] == '}') {
             return E_Writer_Placeholder_Start;
         }
+        // skip {
         i += 1;
-
         size_t fmt_begin = i;
         while (i < format_len && format[i] != '}') {
             i += 1;
         }
         size_t fmt_end = i;
-
         if (i >= format_len) {
             return E_Writer_Placeholder_End;
         }
+        // skip }
         i += 1;
+
+        struct Format_Placeholder placeholder;
+        ret = Parse_Format_Placeholder(
+            format + fmt_begin,
+            fmt_end - fmt_begin,
+            &placeholder
+        );
+        if (ret != 0) {
+            return ret;
+        }
 
     }
     return 0;
