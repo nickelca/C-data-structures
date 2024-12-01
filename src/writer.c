@@ -1,10 +1,11 @@
 #include "../include/writer.h"
+#include <limits.h>
 #include <stdarg.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
-#include <wchar.h>
 
 // clang-format off
 
@@ -52,19 +53,18 @@ int
 Write_All_String_N(struct Writer writer, const char *str, size_t n)
 {
     const char *len = memchr(str, 0, n);
-    return Write_All(writer, str, len ? len - str : n);
+    return Write_All(writer, str, len ? (size_t)(len - str) : n);
 }
 
 struct Format_Placeholder {
     enum : char {
         format_length_default,
-        format_length_short,
         format_length_long,
         format_length_long_long,
-        format_length_ushort,
-        format_length_uint,
+        format_length_unsigned,
         format_length_ulong,
         format_length_ulong_long,
+        format_length_usize,
     } length;
     enum : char {
         format_specifier_default,
@@ -86,11 +86,11 @@ struct Format_Placeholder {
 
 /// TODO: Support wchar_t?
 static inline int
-Format_String(struct Writer writer, struct Format_Placeholder fmt, va_list args)
+Format_String(struct Writer writer, struct Format_Placeholder fmt, va_list *args)
 {
     int ret;
     if (fmt.length == format_length_default) {
-        const char *str = va_arg(args, char *);
+        const char *str = va_arg(*args, char *);
         size_t len = 0;
         if (fmt.width < 0) {
             len = strlen(str);
@@ -107,6 +107,52 @@ Format_String(struct Writer writer, struct Format_Placeholder fmt, va_list args)
         return E_Writer_Format_Length;
     }
     return 0;
+}
+
+static inline int
+Format_Number(struct Writer writer, struct Format_Placeholder fmt, va_list *args)
+{
+    int ret = 0;
+    #define FORMAT(T, T_max, format) do {\
+            typeof(T) num = va_arg(*args, T); \
+            size_t buf_size = snprintf(NULL, 0, format, T_max) \
+                + 1 /* negative sign */ \
+                + 1 /* null terminator */; \
+            char *buf = malloc(buf_size); \
+            if (!buf) { \
+                return E_Writer_Malloc; \
+            } \
+            size_t count = sprintf(buf, format, num); \
+            ret = Write_All(writer, buf, count); \
+            free(buf);\
+        } while (0)
+    switch (fmt.length) {
+        case format_length_default:
+            FORMAT(int, INT_MAX, "%i");
+            break;
+        case format_length_unsigned:
+            FORMAT(unsigned int, UINT_MAX, "%u");
+            break;
+        case format_length_long:
+            FORMAT(long, LONG_MAX, "%li");
+            break;
+        case format_length_ulong:
+            FORMAT(unsigned long, ULONG_MAX, "%lu");
+            break;
+        case format_length_long_long:
+            FORMAT(long long, LLONG_MAX, "%lli");
+            break;
+        case format_length_ulong_long:
+            FORMAT(unsigned long long, ULLONG_MAX, "%llu");
+            break;
+        case format_length_usize:
+            FORMAT(size_t, SIZE_MAX, "%zu");
+            break;
+        default:
+            ret = E_Writer_Format_Length;
+            break;
+    }
+    return ret;
 }
 
 /// Do not include { and }
@@ -153,20 +199,18 @@ Parse_Format_Placeholder(const char *str, size_t len, struct Format_Placeholder 
 
     if (length_modifier_len == 0) {
         out->length = format_length_default;
-    } else if (strncmp("s", str, length_modifier_len) == 0) {
-        out->length = format_length_short;
-    } else if (strncmp("l", str, length_modifier_len) == 0) {
-        out->length = format_length_short;
+    }else if (strncmp("l", str, length_modifier_len) == 0) {
+        out->length = format_length_long;
     } else if (strncmp("ll", str, length_modifier_len) == 0) {
-        out->length = format_length_short;
-    } else if (strncmp("us", str, length_modifier_len) == 0) {
-        out->length = format_length_short;
-    } else if (strncmp("u", str, length_modifier_len) == 0) {
-        out->length = format_length_short;
+        out->length = format_length_long_long;
+    }else if (strncmp("u", str, length_modifier_len) == 0) {
+        out->length = format_length_unsigned;
     } else if (strncmp("ul", str, length_modifier_len) == 0) {
-        out->length = format_length_short;
+        out->length = format_length_ulong;
     } else if (strncmp("ull", str, length_modifier_len) == 0) {
-        out->length = format_length_short;
+        out->length = format_length_ulong_long;
+    } else if (strncmp("uz", str, length_modifier_len) == 0) {
+        out->length = format_length_usize;
     } else {
         return E_Writer_Format_Length;
     }
@@ -243,7 +287,12 @@ Print(struct Writer writer, const char *format, ...)
 
         switch (placeholder.specifier) {
             case format_specifier_string:
-                Format_String(writer, placeholder, args);
+                Format_String(writer, placeholder, &args);
+                break;
+            case format_specifier_decimal:
+            case format_specifier_hex:
+            case format_specifier_octal:
+                Format_Number(writer, placeholder, &args);
                 break;
             default: unreachable();
         }

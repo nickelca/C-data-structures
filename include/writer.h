@@ -22,6 +22,8 @@ enum E_Writer {
     E_Writer_Format_Width,
     /// Format placeholder has invalid precision, e.g. not a number.
     E_Writer_Format_Precision,
+    /// Malloc call failed.
+    E_Writer_Malloc,
 };
 
 struct Writer {
@@ -75,13 +77,12 @@ Write_All_String_N(struct Writer writer, const char *str, size_t n);
 /// should have.
 ///
 /// [length modifier] can be one of:
-/// s    short.
 /// l    long.
 /// ll   long long.
-/// us   unsigned short.
 /// u    unsigned int.
 /// ul   unsigned long.
 /// ull  unsigned long long.
+/// uz   size_t
 /// [specifier] can be one of:
 /// d    Print number as decimal (base 10).
 /// x    Print number as hexadecimal (base 16).
