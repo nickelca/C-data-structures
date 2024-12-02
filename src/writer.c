@@ -68,9 +68,11 @@ struct Format_Placeholder {
     } length;
     enum : char {
         format_specifier_default,
+        format_specifier_binary,
         format_specifier_decimal,
-        format_specifier_hex,
         format_specifier_octal,
+        format_specifier_hex,
+        format_specifier_Hex,
         format_specifier_char,
         format_specifier_string,
     } specifier;
@@ -110,48 +112,159 @@ Format_String(struct Writer writer, struct Format_Placeholder fmt, va_list *args
 }
 
 static inline int
-Format_Number(struct Writer writer, struct Format_Placeholder fmt, va_list *args)
+Format_Integer(struct Writer writer, struct Format_Placeholder fmt, va_list *args)
 {
     int ret = 0;
-    #define FORMAT(T, T_max, format) do {\
-            typeof(T) num = va_arg(*args, T); \
-            size_t buf_size = snprintf(NULL, 0, format, T_max) \
-                + 1 /* negative sign */ \
-                + 1 /* null terminator */; \
-            char *buf = malloc(buf_size); \
-            if (!buf) { \
-                return E_Writer_Malloc; \
-            } \
-            size_t count = sprintf(buf, format, num); \
-            ret = Write_All(writer, buf, count); \
-            free(buf);\
+    unsigned base;
+    const char *digits1;
+    const char *digits2;
+    switch (fmt.specifier) {
+    case format_specifier_binary:
+        base = 2;
+        digits1 = "01";
+        digits2 = "00011011";
+        break;
+    case format_specifier_octal:
+        base = 8;
+        digits1 = "01234567";
+        digits2 = "00010203040506071011121314151617202122232425262730313233343536374041424344454647505152535455565760616263646566677071727374757677";
+        break;
+    case format_specifier_decimal:
+        base = 10;
+        digits1 = "0123456789";
+        digits2 = "00010203040506070809101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899";
+        break;
+    case format_specifier_hex:
+        base = 16;
+        digits1 = "0123456789abcdef";
+        digits2 = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff";
+        break;
+    case format_specifier_Hex:
+        base = 16;
+        digits1 = "0123456789ABCDEF";
+        digits2 = "000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F202122232425262728292A2B2C2D2E2F303132333435363738393A3B3C3D3E3F404142434445464748494A4B4C4D4E4F505152535455565758595A5B5C5D5E5F606162636465666768696A6B6C6D6E6F707172737475767778797A7B7C7D7E7F808182838485868788898A8B8C8D8E8F909192939495969798999A9B9C9D9E9FA0A1A2A3A4A5A6A7A8A9AAABACADAEAFB0B1B2B3B4B5B6B7B8B9BABBBCBDBEBFC0C1C2C3C4C5C6C7C8C9CACBCCCDCECFD0D1D2D3D4D5D6D7D8D9DADBDCDDDEDFE0E1E2E3E4E5E6E7E8E9EAEBECEDEEEFF0F1F2F3F4F5F6F7F8F9FAFBFCFDFEFF";
+        break;
+    default: unreachable();
+    }
+    unsigned base2 = base * base;
+
+    #define FORMAT_SIGNED_INTEGER(T, T_min, U, U_max, U_width) do {            \
+            typeof(T) x = va_arg(*args, T);                                    \
+            typeof(U) n;                                                       \
+            if (x == T_min) {                                                  \
+                n = (U)(-(x + (T)1)) + (U)1;                                   \
+            } else {                                                           \
+                n = (U)x;                                                      \
+            }                                                                  \
+            size_t buf_len = CHAR_BIT * U_width                                \
+                + 2 /* prefix */                                               \
+                + 1 /* negative sign */;                                       \
+            char *buf = malloc(buf_len);                                       \
+            if (!buf) {                                                        \
+                return E_Writer_Malloc;                                        \
+            }                                                                  \
+            size_t i = buf_len;                                                \
+            while (n >= base2) {                                               \
+                typeof(U) d = n % base2;                                       \
+                i -= 2;                                                        \
+                memcpy(&buf[i], &digits2[2 * d], 2);                           \
+                n /= base2;                                                    \
+            }                                                                  \
+            if (n < base) {                                                    \
+                i -= 1;                                                        \
+                buf[i] = digits1[n];                                           \
+            } else {                                                           \
+                i -= 2;                                                        \
+                memcpy(&buf[i], &digits2[2 * n], 2);                           \
+            }                                                                  \
+            if (base == 2) {                                                   \
+                i -= 2;                                                        \
+                memcpy(&buf[i], "0b", 2);                                      \
+            } else if (base == 8) {                                            \
+                i -= 2;                                                        \
+                memcpy(&buf[i], "0o", 2);                                      \
+            } else if (base == 16) {                                           \
+                i -= 2;                                                        \
+                memcpy(&buf[i], "0x", 2);                                      \
+            }                                                                  \
+            if (x < 0) {                                                       \
+                i -= 1;                                                        \
+                buf[i] = '-';                                                  \
+            }                                                                  \
+            ret = Write_All(writer, &buf[i], buf_len - i);                     \
+            if (ret != 0) {                                                    \
+                return ret;                                                    \
+            }                                                                  \
+            free(buf);                                                         \
         } while (0)
+
+    #define FORMAT_UNSIGNED_INTEGER(U, U_max, U_width) do {                    \
+            typeof(U) n = va_arg(*args, U);                                    \
+            size_t buf_len = CHAR_BIT * U_width                                \
+                + 2 /* prefix */;                                              \
+            char *buf = malloc(buf_len);                                       \
+            if (!buf) {                                                        \
+                return E_Writer_Malloc;                                        \
+            }                                                                  \
+            size_t i = buf_len;                                                \
+            while (n >= base2) {                                               \
+                typeof(U) d = n % base2;                                       \
+                i -= 2;                                                        \
+                memcpy(&buf[i], &digits2[2 * d], 2);                           \
+                n /= base2;                                                    \
+            }                                                                  \
+            if (n < base) {                                                    \
+                i -= 1;                                                        \
+                buf[i] = digits1[n];                                           \
+            } else {                                                           \
+                i -= 2;                                                        \
+                memcpy(&buf[i], &digits2[2 * n], 2);                           \
+            }                                                                  \
+            if (base == 2) {                                                   \
+                i -= 2;                                                        \
+                memcpy(&buf[i], "0b", 2);                                      \
+            } else if (base == 8) {                                            \
+                i -= 2;                                                        \
+                memcpy(&buf[i], "0o", 2);                                      \
+            } else if (base == 16) {                                           \
+                i -= 2;                                                        \
+                memcpy(&buf[i], "0x", 2);                                      \
+            }                                                                  \
+            ret = Write_All(writer, &buf[i], buf_len - i);                     \
+            if (ret != 0) {                                                    \
+                return ret;                                                    \
+            }                                                                  \
+            free(buf);                                                         \
+        } while (0)
+
     switch (fmt.length) {
         case format_length_default:
-            FORMAT(int, INT_MAX, "%i");
+            FORMAT_SIGNED_INTEGER(int, INT_MIN, unsigned int, UINT_MAX, INT_WIDTH);
             break;
         case format_length_unsigned:
-            FORMAT(unsigned int, UINT_MAX, "%u");
+            FORMAT_UNSIGNED_INTEGER(unsigned int, UINT_MAX, UINT_WIDTH);
             break;
         case format_length_long:
-            FORMAT(long, LONG_MAX, "%li");
+            FORMAT_SIGNED_INTEGER(long, LONG_MIN, unsigned long, ULONG_MAX, LONG_WIDTH);
             break;
         case format_length_ulong:
-            FORMAT(unsigned long, ULONG_MAX, "%lu");
+            FORMAT_UNSIGNED_INTEGER(unsigned long, ULONG_MAX, ULONG_WIDTH);
             break;
         case format_length_long_long:
-            FORMAT(long long, LLONG_MAX, "%lli");
+            FORMAT_SIGNED_INTEGER(long long, LLONG_MIN, unsigned long long, ULLONG_MAX, LLONG_WIDTH);
             break;
         case format_length_ulong_long:
-            FORMAT(unsigned long long, ULLONG_MAX, "%llu");
+            FORMAT_UNSIGNED_INTEGER(unsigned long long, ULLONG_MAX, ULLONG_WIDTH);
             break;
         case format_length_usize:
-            FORMAT(size_t, SIZE_MAX, "%zu");
+            FORMAT_UNSIGNED_INTEGER(size_t, SIZE_MAX, SIZE_WIDTH);
             break;
         default:
             ret = E_Writer_Format_Length;
             break;
     }
+    #undef FORMAT_SIGNED_INTEGER
+    #undef FORMAT_UNSIGNED_INTEGER
     return ret;
 }
 
@@ -179,14 +292,20 @@ Parse_Format_Placeholder(const char *str, size_t len, struct Format_Placeholder 
     const size_t length_modifier_len = sep - 1;
 
     switch (str[length_modifier_len]) {
+        case 'b':
+            out->specifier = format_specifier_binary;
+            break;
         case 'd':
             out->specifier = format_specifier_decimal;
+            break;
+        case 'o':
+            out->specifier = format_specifier_octal;
             break;
         case 'x':
             out->specifier = format_specifier_hex;
             break;
-        case 'o':
-            out->specifier = format_specifier_octal;
+        case 'X':
+            out->specifier = format_specifier_Hex;
             break;
         case 'c':
             out->specifier = format_specifier_char;
@@ -289,10 +408,12 @@ Print(struct Writer writer, const char *format, ...)
             case format_specifier_string:
                 Format_String(writer, placeholder, &args);
                 break;
-            case format_specifier_decimal:
-            case format_specifier_hex:
+            case format_specifier_binary:
             case format_specifier_octal:
-                Format_Number(writer, placeholder, &args);
+            case format_specifier_hex:
+            case format_specifier_Hex:
+            case format_specifier_decimal:
+                Format_Integer(writer, placeholder, &args);
                 break;
             default: unreachable();
         }

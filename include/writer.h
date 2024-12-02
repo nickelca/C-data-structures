@@ -84,9 +84,11 @@ Write_All_String_N(struct Writer writer, const char *str, size_t n);
 /// ull  unsigned long long.
 /// uz   size_t
 /// [specifier] can be one of:
-/// d    Print number as decimal (base 10).
-/// x    Print number as hexadecimal (base 16).
+/// b    Print number as binary (base 2).
 /// o    Print number as octal (base 8).
+/// d    Print number as decimal (base 10).
+/// x    Print number as hexadecimal (base 16) with lowercase letters.
+/// X    Print number as hexadecimal (base 16) with uppercase letters.
 /// c    Print number as a character.
 /// s    Print null-terminated string
 ///
