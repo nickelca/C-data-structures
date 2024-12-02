@@ -14,10 +14,6 @@
 //!     Amount by which capacity will grow when list is resized in append
 //!     functions. This is by default 2.
 
-#ifndef ARRAY_LIST_H
-#define ARRAY_LIST_H
-
-// clang-format off
 #ifndef ARRAY_LIST
 #define ARRAY_LIST Array_List
 #endif
@@ -450,5 +446,3 @@ ARRAY_LIST_DEINIT(struct ARRAY_LIST *list)
 #undef ARRAY_LIST_T
 #undef ARRAY_LIST
 #undef ARRAY_LIST_GROW_FACTOR
-
-#endif
